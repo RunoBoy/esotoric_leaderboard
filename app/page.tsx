@@ -1,58 +1,94 @@
 "use client"
-import {JSX, useEffect, useState} from "react";
+import React, {JSX, useEffect, useState} from "react";
+import anime from "animejs";
 
-const repo = "https://api.github.com/repos/ZeusWPI/esoterische_introavond/contents/2023/"
+const repo = "https://api.github.com/repos/ZeusWPI/esoterische_introavond/contents/2023/1"
+const token = "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"
+
+type Player = {
+    name: string,
+    level: number,
+    image: JSX.Element
+}
 
 export default function Home() {
-    const [totalWidth, setTotalWidth] = useState(0);
     const [totalHeight, setTotalHeight] = useState(0);
-    const [players, setPlayers] = useState([""]);
+    const [players, setPlayers] = useState<Player[]>([]);
 
     useEffect(() => {
-        setTotalWidth(window.innerWidth);
         setTotalHeight(window.innerHeight);
 
         const fetchPlayers = async () => {
-            const fetchedPLayers: string[] = []
-            const response = await fetch("https://avatars.githubusercontent.com/u/77899156?v=4");
-            const blob = await response.blob();
-            const imageObjectURL = URL.createObjectURL(blob);
-            for (let i=0; i<30; i++) {
-                fetchedPLayers.push(imageObjectURL);
+            const fetchedPLayers: Player[] = [];
+            const response = await fetch(repo, {
+                headers: {
+                    "Accept": "application/vnd.github.v3+json",
+                    "Authorization": "token " + token
+                }
+            });
+
+            const files = await response.json();
+            let index = 0;
+            const gap = totalHeight / 79;
+
+            for (const file of files) {
+                const username = file.name.split(".")[0];
+                await fetch("https://api.github.com/users/" + username, {
+                    headers: {
+                        "Accept": "application/vnd.github.v3+json",
+                        "Authorization": "token " + token
+                    }
+                }).then((response) => {
+                    return response.json();
+                }).then((data) => {
+                    fetchedPLayers.push({
+                        name: data.avatar_url, level: 1, image:
+                            <div style={{
+                                position: "absolute",
+                                left: 125 + gap + index * gap * 5 + index * gap,
+                                top: gap,
+                                backgroundImage: `url(${data.avatar_url})`,
+                                backgroundSize: "cover",
+                                width: gap * 5,
+                                height: gap * 5
+                        }}></div>
+                    });
+                    index++;
+                })
             }
+
             setPlayers(fetchedPLayers);
         }
 
-        fetchPlayers().catch((error) => { console.error(error) });
-    }, [])
+        fetchPlayers().catch((error) => {
+            console.error(error)
+        });
+    }, [totalHeight])
+
+    update_page(players, setPlayers);
 
     return (
         <div>
-            {create_players(players, totalHeight)}
+            {players.map((player) => player.image)}
             {create_positions(totalHeight)}
-        </div>)
-        ;
+        </div>
+    )
 }
 
-function create_players(players: string[], totalHeight: number) {
-    const gap = totalHeight / 79;
-    const playerComponents: JSX.Element[] = [];
-    let index = 0;
-    players.forEach((player) => {
-        playerComponents.push(
-            <div style={{
-                position: "absolute",
-                left: 125 + gap + index * gap * 5 + index * gap,
-                top: gap,
-                backgroundImage: `url(${player})`,
-                backgroundSize: "cover",
-                width: gap * 5,
-                height: gap * 5}}></div>
-        );
-        index++;
-    });
-
-    return playerComponents;
+async function update_page(players: Player[], setPlayers: (value: (((prevState: Player[]) => Player[]) | Player[])) => void) {
+    while (true) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        const updatedPlayers = players.map(player => {
+            const newImage = React.cloneElement(player.image, {
+                style: {
+                    ...player.image.props.style,
+                    top: player.image.props.style.top + 50
+                }
+            });
+            return { ...player, image: newImage };
+        });
+        setPlayers(updatedPlayers);
+    }
 }
 
 function create_positions(TotalHeight: number) {
@@ -77,7 +113,7 @@ function create_positions(TotalHeight: number) {
                 top: x,
                 width: 100,
                 height: gap * 5,
-                backgroundColor: "lightblue",
+                backgroundColor: "#f77f00",
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center"
@@ -92,7 +128,7 @@ function create_positions(TotalHeight: number) {
             top: x,
             width: 100,
             height: gap,
-            backgroundColor: "white"
+            backgroundColor: "#3b3b3b"
         }}></div>);
         x += gap;
         index += 1;
