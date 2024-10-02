@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --background: #3b3b3b;
+  --background: #3b3b3b url(https://zinc.zeus.gent/5c3913) no-repeat center center fixed;
   --foreground: #171717;
 }
 

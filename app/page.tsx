@@ -1,14 +1,14 @@
 "use client"
-import React, {JSX, useEffect, useState} from "react";
-import anime from "animejs";
+import React, {useEffect, useState} from "react";
 
-const repo = "https://api.github.com/repos/ZeusWPI/esoterische_introavond/contents/2023/1"
+const repo = "https://api.github.com/repos/ZeusWPI/esoterische_introavond/contents/2024/"
 const token = "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"
 
 type Player = {
     name: string,
     level: number,
-    image: JSX.Element
+    index: number,
+    totalHeight: number
 }
 
 export default function Home() {
@@ -19,77 +19,95 @@ export default function Home() {
         setTotalHeight(window.innerHeight);
 
         const fetchPlayers = async () => {
-            const fetchedPLayers: Player[] = [];
-            const response = await fetch(repo, {
-                headers: {
-                    "Accept": "application/vnd.github.v3+json",
-                    "Authorization": "token " + token
-                }
-            });
-
-            const files = await response.json();
+            const fetchedPlayers: Player[] = [];
             let index = 0;
-            const gap = totalHeight / 79;
+            const playersFound = new Set<string>();
 
-            for (const file of files) {
-                const username = file.name.split(".")[0];
-                await fetch("https://api.github.com/users/" + username, {
+            for (let i = 13; i > 0; i--) {
+                const repo_level = repo + i;
+                const response = await fetch(repo_level, {
                     headers: {
                         "Accept": "application/vnd.github.v3+json",
                         "Authorization": "token " + token
                     }
-                }).then((response) => {
-                    return response.json();
-                }).then((data) => {
-                    fetchedPLayers.push({
-                        name: data.avatar_url, level: 1, image:
-                            <div style={{
-                                position: "absolute",
-                                left: 125 + gap + index * gap * 5 + index * gap,
-                                top: gap,
-                                backgroundImage: `url(${data.avatar_url})`,
-                                backgroundSize: "cover",
-                                width: gap * 5,
-                                height: gap * 5
-                        }}></div>
+                });
+
+                if (response.status === 404) {
+                    continue;
+                }
+
+                const files = await response.json();
+
+                const playerPromises = files.map(async (file: { name: string; }) => {
+                    const username = file.name.split(".")[0];
+                    const userResponse = await fetch("https://api.github.com/users/" + username, {
+                        headers: {
+                            "Accept": "application/vnd.github.v3+json",
+                            "Authorization": "token " + token
+                        }
                     });
-                    index++;
-                })
+
+                    if (userResponse.status === 404) {
+                        return null;
+                    }
+
+                    const data = await userResponse.json();
+                    if (data && !playersFound.has(data.avatar_url)) {
+                        fetchedPlayers.push({
+                            name: data.avatar_url,
+                            level: i,
+                            index: index,
+                            totalHeight: totalHeight
+                        });
+                        index++;
+                        playersFound.add(data.avatar_url);
+                    }
+                });
+
+                await Promise.all(playerPromises);
             }
 
-            setPlayers(fetchedPLayers);
+            setPlayers(fetchedPlayers);
         }
 
         fetchPlayers().catch((error) => {
             console.error(error)
         });
-    }, [totalHeight])
 
-    update_page(players, setPlayers);
+        const interval = setInterval(() => {
+            window.location.reload()
+        }, 60000);
+
+        return () => clearInterval(interval);
+    }, [totalHeight]);
+
 
     return (
         <div>
-            {players.map((player) => player.image)}
+            {players.map((player) => (
+                <Player key={player.name} {...player}/>
+            ))}
             {create_positions(totalHeight)}
         </div>
     )
 }
 
-async function update_page(players: Player[], setPlayers: (value: (((prevState: Player[]) => Player[]) | Player[])) => void) {
-    while (true) {
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-        const updatedPlayers = players.map(player => {
-            const newImage = React.cloneElement(player.image, {
-                style: {
-                    ...player.image.props.style,
-                    top: player.image.props.style.top + 50
-                }
-            });
-            return { ...player, image: newImage };
-        });
-        setPlayers(updatedPlayers);
-    }
+function Player({name, level, index, totalHeight}: Player) {
+    const gap = totalHeight / 79;
+    return (
+        <div style={{
+            position: "absolute",
+            left: 125 + gap + index * gap * 5 + index * gap,
+            top: level * gap * 5 + level * gap - gap * 5,
+            backgroundImage: `url(${name})`,
+            backgroundSize: "cover",
+            width: gap * 5,
+            height: gap * 5
+        }}></div>
+)
+    ;
 }
+
 
 function create_positions(TotalHeight: number) {
     const positions = [];
