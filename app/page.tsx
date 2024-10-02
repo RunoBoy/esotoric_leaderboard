@@ -2,7 +2,7 @@
 import React, {useEffect, useState} from "react";
 
 const repo = "https://api.github.com/repos/ZeusWPI/esoterische_introavond/contents/2024/"
-const token = "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"
+const token = ""
 
 type Player = {
     name: string,
